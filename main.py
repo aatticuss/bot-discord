@@ -1,7 +1,11 @@
-import os
 import discord
+from discord.ext import commands
 import asyncio
 import psycopg2
+import requests
+from bs4 import BeautifulSoup
+
+url = 'https://wiki.python.org.br/ExerciciosFuncoes'
 
 # Conexão com banco de dados local com nome de questoes
 conn = psycopg2.connect(
@@ -14,30 +18,38 @@ conn = psycopg2.connect(
 intents = discord.Intents.default()
 intents.message_content = True
 
+bot = commands.Bot(command_prefix="!", intents = discord.Intents.all())
+
 client = discord.Client(intents=intents)
 
-cur = conn.cursor()
+try:
+    cur = conn.cursor()
+    cur.execute('SELECT texto FROM questoes_diarias;')
+    questoesBD = cur.fetchall()
 
-cur.execute('SELECT * FROM questoes_diarias;')
+    if not questoesBD:
+        response = requests.get(url)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            questoes = soup.find_all("li", class_="gap")
+            questao = [questao.get_text(strip=True, separator=" ") for questao in questoes]
+            for txt in questao:
+                cur.execute("INSERT INTO questoes_diarias (texto) VALUES (%s)", (txt,))
+            conn.commit()
+            cur.execute('SELECT texto FROM questoes_diarias;')
+            questoesBD = cur.fetchall()
+except Exception as e:
+    print(f"Ocorreu um erro: {e}")
 
-questoes = cur.fetchall()
-
-print(questoes)
-
-@client.event
+@bot.event
 async def on_ready():
-    print(f'Me chamo bot {client.user}')
-    await asyncio.sleep(600)
-    # Aqui ele printa no console o user e dps de 10 minutos (sleep 600s) ele faz algo que seria postar o desafio
+    print(f'Me chamo bot {bot.user}')
 
-    
-@client.event
-async def on_message(message):
-    # Aqui ele checa se a msg foi dele, se for ele so volta, se n for dele e a msg for hello, ele da hello d volta
-    if message.author == client.user:
-        return
+@bot.command()
+async def oi(ctx):
+    await ctx.send(f"Oi, {ctx.author.mention}, tudo bem?")
 
-    if message.content.startswith('$hello'):
-        await message.channel.send('Hello!')
+with open('file.txt', 'r') as file:
+    token = file.read()
 
-# client.run('your token here')
+bot.run(token)
