@@ -1,11 +1,14 @@
 import discord
+import random
 from discord.ext import commands
-import asyncio
 import psycopg2
 import requests
 from bs4 import BeautifulSoup
 
 url = 'https://wiki.python.org.br/ExerciciosFuncoes'
+
+with open('anterior.txt', 'r') as file:
+    anterior = file.read()
 
 # Conexão com banco de dados local com nome de questoes
 conn = psycopg2.connect(
@@ -19,8 +22,6 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents = discord.Intents.all())
-
-client = discord.Client(intents=intents)
 
 try:
     cur = conn.cursor()
@@ -40,6 +41,18 @@ try:
             questoesBD = cur.fetchall()
 except Exception as e:
     print(f"Ocorreu um erro: {e}")
+    
+def def_questao_diaria(anterior):
+    global index
+    index = random.randint(0, len(questoesBD))
+    while (int(anterior) == index):
+        index = random.randint(0, len(questoesBD))
+    with open('anterior.txt', 'w') as arquivo:
+        arquivo.write(f"{index}")
+    anterior = index
+    return index
+
+index = def_questao_diaria(anterior)
 
 @bot.event
 async def on_ready():
@@ -48,6 +61,11 @@ async def on_ready():
 @bot.command()
 async def oi(ctx):
     await ctx.send(f"Oi, {ctx.author.mention}, tudo bem?")
+
+@bot.command()
+async def reroll(ctx):
+    def_questao_diaria(anterior)
+    await ctx.send(f"{ctx.author.mention} questão trocada.")
 
 with open('file.txt', 'r') as file:
     token = file.read()
