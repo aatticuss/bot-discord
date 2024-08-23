@@ -1,21 +1,24 @@
-import os
+import asyncio
 import discord
+from discord.ext import commands
 
 intents = discord.Intents.default()
 intents.message_content = True
 
+bot = commands.Bot(command_prefix="!", intents = discord.Intents.all())
+
 client = discord.Client(intents=intents)
 
-@client.event
+@bot.event
 async def on_ready():
-    print(f'We have logged in as {client.user}')
+    print(f'Me chamo bot {client.user}')
+    # await asyncio.sleep(600)
 
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
+@bot.command()
+async def oi(ctx):
+    await ctx.send(f"Oi, {ctx.author.mention}, tudo bem?")
 
-    if message.content.startswith('$hello'):
-        await message.channel.send('Hello!')
+with open('file', 'r') as file:
+    token = file.read()
 
-client.run('your token here')
+bot.run('token')
